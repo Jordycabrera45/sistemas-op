@@ -1,0 +1,13 @@
+# Seleccionar una imagen base (por ejemplo, Ubuntu)
+FROM ubuntu:latest
+
+# Establecer el autor de la imagen (opcional)
+LABEL maintainer="jordy.cabrera8@ucuenca.edu.ec"
+
+# Actualizar paquetes e instalar programas necesarios
+RUN apt update && \
+    apt upgrade -y && \
+    apt install -y nano tree
+
+# Definir el comando de inicio del contenedor
+CMD ["bash"]
