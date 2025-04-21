@@ -4,10 +4,16 @@ FROM ubuntu:latest
 # Establecer el autor de la imagen (opcional)
 LABEL maintainer="jordy.cabrera8@ucuenca.edu.ec"
 
+#directorio de trabajo
+WORKDIR /prueba_dir
+
 # Actualizar paquetes e instalar programas necesarios
 RUN apt update && \
     apt upgrade -y && \
-    apt install -y nano tree
+    apt install -y nano tree && \
+    apt-get install -y iputils-ping
+    
 
 # Definir el comando de inicio del contenedor
 CMD ["bash"]
+
