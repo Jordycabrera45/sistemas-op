@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# Script de Monitoreo de Recursos del Sistema
+# Autor: Jordy de Jesus Cabrera Santos
+# Descripcion: Monitorea CPU, RAM y Disco cada 60 segundos durante 5 minutos
+
+# Archivo de salida
+OUTPUT_FILE="monitoreo_recursos.txt"
+
+# Crear encabezado del archivo
+echo "Tiempo(s) %CPU_Libre %Memoria_Libre %Disco_Libre" > $OUTPUT_FILE
+echo "==========================================" >> $OUTPUT_FILE
+
+# Funcion para obtener porcentaje de CPU libre
+get_cpu_libre() {
+    # Usar top para obtener el %idle de CPU
+    # Se toma una muestra de 1 segundo y se extrae el valor idle
+    local cpu_idle=$(top -bn1 | grep "Cpu(s)" | awk '{print $8}' | sed 's/[^0-9.]//g')
+
+    # Validacion: si no es un numero valido, usar metodo alternativo
+    if [[ ! "$cpu_idle" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+        cpu_idle=$(top -bn1 | grep "Cpu(s)" | sed 's/.*,\s*\([0-9.]*\)%id.*/\1/')
+    fi
+
+    # Si aun no es valido, usar valor por defecto
+    if [[ ! "$cpu_idle" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+        cpu_idle="0.0"
+    fi
+
+    echo $cpu_idle
+}
+
+# Funcion para obtener porcentaje de memoria libre
+get_memoria_libre() {
+    # Usar free para obtener memoria disponible vs total
+    local mem_info=$(free | grep "Mem:")
+    local mem_total=$(echo $mem_info | awk '{print $2}')
+    local mem_available=$(echo $mem_info | awk '{print $7}')
+
+    # Calcular porcentaje de memoria libre
+    local mem_libre_pct=$(echo "scale=2; ($mem_available * 100) / $mem_total" | bc)
+    echo $mem_libre_pct
+}
+
+# Funcion para obtener porcentaje de disco libre
+get_disco_libre() {
+    # Usar df para obtener el porcentaje de espacio libre del sistema raiz
+    local disco_usado=$(df -h / | tail -1 | awk '{print $5}' | sed 's/%//')
+    local disco_libre=$((100 - disco_usado))
+    echo $disco_libre
+}
+
+# Mostrar informacion inicial
+echo "=== SCRIPT DE MONITOREO DE RECURSOS ==="
+echo "Duracion: 5 minutos"
+echo "Intervalo: 60 segundos"
+echo "Archivo de salida: $OUTPUT_FILE"
+echo "Iniciando monitoreo..."
+echo ""
+
+# Variables de control
+contador=0
+tiempo_total=300  # 5 minutos en segundos
+intervalo=60      # 60 segundos
+
+# Verificar si bc esta instalado (necesario para calculos decimales)
+if ! command -v bc &> /dev/null; then
+    echo "Error: El comando 'bc' no esta instalado. Instalelo con:"
+    echo "sudo apt-get install bc"
+    exit 1
+fi
+
+# Loop principal de monitoreo
+while [ $contador -lt $tiempo_total ]; do
+    # Incrementar contador
+    contador=$((contador + intervalo))
+
+    # Obtener metricas
+    cpu_libre=$(get_cpu_libre)
+    memoria_libre=$(get_memoria_libre)
+    disco_libre=$(get_disco_libre)
+
+    # Mostrar en pantalla
+    echo "Tiempo: ${contador}s - CPU Libre: ${cpu_libre}% - RAM Libre: ${memoria_libre}% - Disco Libre: ${disco_libre}%"
+
+    # Guardar en archivo
+    echo "${contador} ${cpu_libre} ${memoria_libre} ${disco_libre}" >> $OUTPUT_FILE
+
+    # Esperar 60 segundos (excepto en la ultima iteracion)
+    if [ $contador -lt $tiempo_total ]; then
+        sleep $intervalo
+    fi
+done
+
+echo ""
+echo "=== MONITOREO COMPLETADO ==="
+echo "Los resultados se han guardado en: $OUTPUT_FILE"
+echo ""
+echo "Resumen del archivo generado:"
+echo "============================================"
+cat $OUTPUT_FILE
